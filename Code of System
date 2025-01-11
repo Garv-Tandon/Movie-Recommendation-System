@@ -1,0 +1,52 @@
+from surprise import SVD, Dataset, Reader
+from surprise.model_selection import train_test_split
+from surprise import accuracy
+
+# Load MovieLens dataset (small version, u.data is typically used)
+data_path = 'ml-100k/u.data'  # Adjust the path if necessary
+reader = Reader(line_format='user item rating timestamp', sep='\t', rating_scale=(1, 5))
+
+# Load data into Surprise format
+data = Dataset.load_from_file(data_path, reader)
+
+# Split data into training and testing sets
+trainset, testset = train_test_split(data, test_size=0.2)
+
+# Use SVD (Singular Value Decomposition) for collaborative filtering
+model = SVD()
+
+# Train the model
+model.fit(trainset)
+
+# Predict ratings for the test set
+predictions = model.test(testset)
+
+# Calculate RMSE (Root Mean Square Error) to evaluate the model
+rmse = accuracy.rmse(predictions)
+print(f"RMSE: {rmse}")
+
+# Function to get top N movie recommendations for a user
+def get_top_n(predictions, n=5):
+    top_n = {}
+    
+    # Organize predictions by user
+    for uid, iid, true_r, est, _ in predictions:
+        if uid not in top_n:
+            top_n[uid] = []
+        top_n[uid].append((iid, est))
+
+    # Sort the predictions for each user and get the top N
+    for uid, user_ratings in top_n.items():
+        user_ratings.sort(key=lambda x: x[1], reverse=True)
+        top_n[uid] = user_ratings[:n]
+    
+    return top_n
+
+# Get the top 10 movie recommendations for each user
+top_n = get_top_n(predictions)
+
+# Print top 5 movie recommendations for user 1 (example)
+user_id = '2'  
+print(f"Top 5 recommendations for User {user_id}:")
+for movie_id, rating in top_n[user_id]:
+    print(f"Movie ID: {movie_id}, Predicted Rating: {rating:.2f}")
